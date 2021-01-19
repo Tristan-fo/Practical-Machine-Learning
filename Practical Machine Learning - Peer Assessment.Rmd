@@ -1,0 +1,84 @@
+---
+title: "Practical Machine Learning - Peer Assessment"
+author: "Tristan FOULARD"
+output: html_document
+---
+
+# **Background** 
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
+
+## Load the necessary packages
+```{r}
+library(caret)
+library(randomForest)
+```
+
+## Load the data into the workspace
+```{r}
+# Download both the training and testing sets into the working directory
+path <- getwd()
+urlTrain <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv" 
+download.file(urlTrain, file.path(path, 'training.csv'))
+
+urlTest <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+download.file(urlTest, file.path(path, "testing.csv"))
+
+# Load the datasets from the directory to the R file
+train <- read.csv("training.csv", na.strings = c("NA", "#DIV/0!",""))
+test <- read.csv("testing.csv", na.strings = c("NA", "#DIV/0!",""))
+```
+
+## Perform some quick exploratory analysis (on the training set only)
+```{r}
+dim(train)
+
+table(train$classe)
+
+```
+
+
+## Remove the NA columns and useless columns
+```{r}
+# Remove NA columns
+complete <- complete.cases(t(train)) & complete.cases(t(test)) 
+train <- train[, complete]
+test <- test[, complete]
+
+# Remove useless columns
+train <- train[, -c(1,3,4,5,6,7)]
+test <- test[, -c(1,3,4,5,6,7)]
+
+```
+
+## Split the training dataset into training and validation sets (80% - 20%)
+```{r}
+set.seed(1)
+trainset <- createDataPartition(train$classe, p = 0.8, list = FALSE)
+Training <- train[trainset,]
+Validation <- train[-trainset,]
+```
+
+## Create a random forest model (many advantages in this type of case, especially since picks the most important variables first)
+```{r}
+model_RF <- randomForest(as.factor(classe) ~., data = Training, importance = TRUE, ntrees = 10)
+```
+
+## Find a confusion Matrix of this model on the training dataset to test its accuracy
+```{r}
+ptraining <- predict(model_RF, Training)
+confusionMatrix(table(ptraining, Training$classe))
+
+```
+
+## Test our model on the Validation dataset
+```{r}
+pvalidation <- predict(model_RF, Validation)
+confusionMatrix(table(pvalidation, Validation$classe))
+```
+
+## Finally, test the model on the test dataset, and prepare the submission on the Coursera Website
+```{r}
+ptest <- predict(model_RF, test)
+ptest
+```
